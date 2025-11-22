@@ -1,0 +1,45 @@
+# Local environment and secrets
+.env
+config_llmgateway.yaml
+.env.local
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+venv.bak/
+
+# Logs and runtime files
+logs/
+*.log
+tmp/
+*.tmp
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Node
+node_modules/
+
+# Build artifacts
+dist/
+build/
+
+# Misc
+secrets.yml
+*.pem
+*.key
+
+# Keep example configs in repo, but ignore runtime configs and secrets
+# (remove the next line if you want to track the gateway config in the repo)
+config_llmgateway.yaml
