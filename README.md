@@ -15,10 +15,10 @@ echo "# LiteLLM config" > config_llmgateway.yaml
 ### 2. Create .env file
 
 ```bash
-echo "LITELLM_MASTER_KEY=sk-master-1234" >> .env
-echo "LITELLM_SALT_KEY=sk-salt-1234" >> .env
-echo "UI_USERNAME=admin" >> .env
-echo "UI_PASSWORD=admin" >> .env
+echo LITELLM_MASTER_KEY=sk-master-1234 >> .env
+echo LITELLM_SALT_KEY=sk-salt-1234 >> .env
+echo UI_USERNAME=admin >> .env
+echo UI_PASSWORD=admin >> .env
 ```
 
 ⚠️ **Remember to change these values for production!**
@@ -100,7 +100,8 @@ docker compose up -d
 ## 🎯 Usage
 
 ### Web UI
-- URL: http://localhost:4000
+- URL API: http://localhost:4000
+- URL UI: http://localhost:4000/ui
 - Login: admin / admin
 
 ### Test with cURL
