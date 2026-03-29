@@ -1,0 +1,129 @@
+# ========================================
+# GENERAL SETTINGS
+# ========================================
+# Defines master authentication key used for API access control
+# This key is required when making requests to the proxy server
+general_settings:
+  master_key: "sk-master-1234"
+
+# ========================================
+# LITELLM SETTINGS
+# ========================================
+# Configuration for LiteLLM library behavior and monitoring
+litellm_settings: 
+  # When True, automatically removes incompatible parameters when switching between different AI providers
+  # Example: Google Gemini doesn't support the same parameters as OpenAI, so this ensures smooth fallback
+  drop_params: True
+  # Callbacks to execute when requests succeed (used here to send metrics to Prometheus)
+  success_callbacks: ["prometheus"]
+  # Callbacks to execute when requests fail (used here to log failures to Prometheus)
+  failure_callbacks: ["prometheus"]
+  
+# ========================================
+# ROUTER SETTINGS
+# ========================================
+# Controls how requests are distributed across available models
+router_settings:
+  # 1. LOAD BALANCING STRATEGY
+  # Determines how to distribute incoming requests across multiple model instances
+  # Options available:
+  #   - 'least-busy': Routes to the currently least-loaded model (best for balancing workload)
+  #   - 'simple-shuffle': Randomly selects a model from available options
+  #   - 'usage-based-routing': Routes based on historical usage patterns
+  routing_strategy: least-busy 
+  
+  # 2. AUTO-FALLBACK CONFIGURATION (Fallbacks)
+  # Automatically switches to alternative models if the primary model fails
+  # Failure scenarios: timeouts, server overload, API errors, network issues
+  # Format: {"primary_model": ["fallback_model_1", "fallback_model_2"]}
+  # The proxy will try fallback models in order until one succeeds
+  fallbacks: 
+    - {"gemini-2.5-flash-lite": ["gemini-2.5-flash"]} # If flash-lite fails, try flash
+
+# ========================================
+# MODEL LIST CONFIGURATION
+# ========================================
+# Defines which AI models are available and how to access them
+# Each entry maps a model name to its parameters and provider configuration
+model_list:
+  
+  # ========================================
+  # [A] LOAD BALANCING MODELS (Chat/Generation)
+  # ========================================
+  # Multiple entries with the same model_name enable load balancing
+  # The proxy automatically distributes requests across these instances
+  
+  - model_name: gemini-2.5-flash-lite
+    litellm_params:
+      # Full model identifier: provider/model_version
+      # 'vertex_ai/' prefix indicates this model runs on Google Cloud Vertex AI
+      model: vertex_ai/gemini-2.5-flash-lite
+      # Note: API credentials are typically sourced from environment variables
+      # or Google Cloud service account (stored in ./credential/ folder)
+      # api_key: "os.environ/VERTEX_AI_KEY"
+      # api_base: "https://aiplatform.googleapis.com/v1/publishers/google/models/"
+      # Rate limit: maximum 100 requests per minute for this model instance
+      # Helps proxy calculate optimal load distribution
+      rpm: 100
+      # Google Cloud project ID where this model is deployed
+      vertex_project: "gen-lang-client-0106782583"
+      # Geographic region of the model (us-central1 = US Central)
+      vertex_location: "us-central1"
+
+  - model_name: gemini-2.5-flash
+    litellm_params:
+      # Faster and more capable version than flash-lite
+      # Used when more performance is needed
+      model: vertex_ai/gemini-2.5-flash
+      rpm: 100
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"
+
+  # ========================================
+  # [C] EMBEDDING MODELS (For RAG & Vector Databases)
+  # ========================================
+  # These models convert text into vector embeddings for similarity search
+  # Accessed via the /v1/embeddings endpoint
+  # Used in Retrieval-Augmented Generation (RAG) applications
+  
+  - model_name: text-embedding-004 # Google's latest embedding model
+    litellm_params:
+      # Converts text to high-quality dense vectors (dimensions: typically 768)
+      # Best for general-purpose semantic search and similarity matching
+      model: vertex_ai/text-embedding-004
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"
+
+  - model_name: gemini-embedding-001 # Google's original embedding model
+    litellm_params:
+      # Converts text to vectors for semantic understanding
+      # Older but stable model, may have different embedding dimensions
+      model: vertex_ai/gemini-embedding-001
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"
+
+  - model_name: text-multilingual-embedding-002 # Multi-language embedding model
+    litellm_params:
+      # Supports text embedding across 100+ languages
+      # Essential for multilingual RAG systems and vector search
+      # Maintains semantic meaning across different languages
+      model: vertex_ai/text-multilingual-embedding-002
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"
+
+  # ========================================
+  # [D] WILDCARD MODEL CATCH-ALL (* WILDCARD)
+  # ========================================
+  # Routes any model_name NOT explicitly listed above to this catch-all rule
+  # Allows clients to request models that aren't pre-configured
+  # The model name is forwarded directly to the provider
+  
+  - model_name: "*"
+    litellm_params:
+      # Forwards the requested model name directly to Vertex AI
+      # Example: If client requests 'gemini-1.5-pro', it becomes 'vertex_ai/gemini-1.5-pro'
+      # This provides flexibility to access new models without updating the config
+      model: vertex_ai/*
+      # Note: The * is replaced by the actual model name from the client request
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"

@@ -6,7 +6,8 @@ services:
         target: runtime
     image: ghcr.io/berriai/litellm:main-stable
     volumes:
-        - ./config_llmgateway.yaml:/app/config.yaml
+        - ./config.yaml:/app/config.yaml
+        - ./credential/gen-lang-client-0106782583-a2b429454cef.json:/app/google-key.json
     command:
         - "--config=/app/config.yaml"
     ports:

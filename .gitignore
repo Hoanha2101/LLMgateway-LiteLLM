@@ -1,6 +1,6 @@
 # Local environment and secrets
 .env
-config_llmgateway.yaml
+config.yaml
 .env.local
 .env.*
 
@@ -40,6 +40,4 @@ secrets.yml
 *.pem
 *.key
 
-# Keep example configs in repo, but ignore runtime configs and secrets
-# (remove the next line if you want to track the gateway config in the repo)
-config_llmgateway.yaml
+credential/

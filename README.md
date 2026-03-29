@@ -9,7 +9,7 @@ Unified gateway to manage multiple LLM providers (OpenAI, DeepSeek, Gemini...) t
 ```bash
 curl -L https://raw.githubusercontent.com/BerriAI/litellm/main/docker-compose.yml -o docker-compose.yml
 curl -o prometheus.yml https://raw.githubusercontent.com/BerriAI/litellm/main/prometheus.yml
-echo "# LiteLLM config" > config_llmgateway.yaml
+echo "# LiteLLM config" > config.yaml
 ```
 
 ### 2. Create .env file
@@ -41,13 +41,13 @@ Change to:
 
 ```yaml
 volumes:
-  - ./config_llmgateway.yaml:/app/config.yaml
+  - ./config.yaml:/app/config.yaml
 
 command:
   - "--config=/app/config.yaml"
 ```
 
-### 4. Create config_llmgateway.yaml - [Example]
+### 4. Create config.yaml - [Example]
 
 ```yaml
 model_list:
@@ -162,12 +162,12 @@ curl http://localhost:4000/health
 ## 📁 Repository layout
 
 - `docker-compose.yml` — Primary docker-compose manifest for local and production deployments.
-- `config_llmgateway.yaml` — Gateway runtime configuration (contains backend definitions and routing rules). This file is ignored by `.gitignore` to avoid committing secrets.
+- `config.yaml` — Gateway runtime configuration (contains backend definitions and routing rules). This file is ignored by `.gitignore` to avoid committing secrets.
 - `.env` — Local environment variables and secrets (DO NOT commit).
 - `prometheus.yml` — Prometheus scrape configuration for gateway metrics.
 - `mao/` — Workspace folder for local scripts, plugins, or experimental assets. This folder is intentionally empty by default; add a `README.md` inside `mao/` to document its purpose for your project.
 - `.gitignore` — Added to ignore local secrets, virtual environments, and runtime configs.
 
 Notes:
-- Keep secrets out of the repository. Use `config_llmgateway.yaml.example` and `.env.example` for shareable samples.
+- Keep secrets out of the repository. Use `config.yaml.example` and `.env.example` for shareable samples.
 - Populate `mao/README.md` with any guidance for contributors using the `mao` workspace.
