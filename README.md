@@ -1,6 +1,6 @@
-# 🚀 LiteLLM Gateway - Quick Setup
+# 🚀 LiteLLM Gateway - Google Vertex AI Setup
 
-Unified gateway to manage multiple LLM providers (OpenAI, DeepSeek, Gemini...) through a single API endpoint.
+Unified gateway to manage Google Vertex AI models (Gemini 2.5, Embeddings) through a single API endpoint with automatic load balancing and fallback support.
 
 ## 📦 Installation
 
@@ -50,43 +50,58 @@ command:
 ### 4. Create config.yaml - [Example]
 
 ```yaml
-model_list:
-  # GPT-4o (Premium)
-  - model_name: smart-shop-gpt-4o
-    litellm_params:
-      model: openai/gpt-4o
-      api_key: YOUR_OPENAI_KEY
-    tags: ["premium", "vision", "high-speed"]
+general_settings:
+  master_key: "sk-master-1234" # Change this in production!
 
-  # DeepSeek (Cost-Effective)
-  - model_name: smart-shop-deepseek-r1
-    litellm_params:
-      model: deepseek/deepseek-r1
-      api_key: YOUR_DEEPSEEK_KEY
-    tags: ["standard", "long-context"]
-
-  # Gemini 2.0 Flash (Ultra Fast)
-  - model_name: smart-shop-gemini-2.0-flash
-    litellm_params:
-      model: gemini/gemini-2.0-flash-exp
-      api_key: YOUR_GOOGLE_KEY
-    tags: ["fast", "cost-effective"]
+litellm_settings:
+  # Drop incompatible params when switching between providers
+  drop_params: True
+  # Monitor success/failure through Prometheus
+  success_callbacks: ["prometheus"]
+  failure_callbacks: ["prometheus"]
 
 router_settings:
-  routing_strategy: least-busy  # Load balancing
-  allowed_fails: 3              # Allow 3 fails before cooldown
-  cooldown_time: 30             # 30s cooldown after failures
-  request_timeout: 60           # 60s timeout
-  
-  # Auto fallback
+  # Route to least-loaded model instance
+  routing_strategy: least-busy
+  # Auto-fallback if primary model fails
   fallbacks:
-    - smart-shop-gpt-4o:
-        - smart-shop-deepseek-r1
-        - smart-shop-gemini-2.0-flash
-  
-  content_policy_fallbacks:
-    - smart-shop-deepseek-r1:
-        - smart-shop-gpt-4o
+    - { "gemini-2.5-flash-lite": ["gemini-2.5-flash"] }
+
+model_list:
+  # Chat Models - Gemini 2.5 (Load Balanced)
+  - model_name: gemini-2.5-flash-lite
+    litellm_params:
+      model: vertex_ai/gemini-2.5-flash-lite
+      rpm: 100 # 100 requests/minute rate limit
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"
+
+  - model_name: gemini-2.5-flash
+    litellm_params:
+      model: vertex_ai/gemini-2.5-flash
+      rpm: 100
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"
+
+  # Embedding Models - For RAG & Vector Search
+  - model_name: text-embedding-004
+    litellm_params:
+      model: vertex_ai/text-embedding-004
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"
+
+  - model_name: text-multilingual-embedding-002
+    litellm_params:
+      model: vertex_ai/text-multilingual-embedding-002
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"
+
+  # Catch-all: forward any other model to Vertex AI
+  - model_name: "*"
+    litellm_params:
+      model: vertex_ai/*
+      vertex_project: "gen-lang-client-0106782583"
+      vertex_location: "us-central1"
 ```
 
 📚 [See full config options](https://docs.litellm.ai/docs/proxy/config_settings)
@@ -100,23 +115,40 @@ docker compose up -d
 ## 🎯 Usage
 
 ### Web UI
+
 - URL API: http://localhost:4000
 - URL UI: http://localhost:4000/ui
 - Login: admin / admin
 
 ### Test with cURL
 
+**Chat Completion:**
+
 ```bash
 curl -X POST http://localhost:4000/chat/completions \
   -H "Authorization: Bearer sk-master-1234" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "smart-shop-gpt-4o",
-    "messages": [{"role": "user", "content": "Hello!"}]
+    "model": "gemini-2.5-flash",
+    "messages": [{"role": "user", "content": "Explain AI in 50 words"}]
+  }'
+```
+
+**Embeddings (RAG):**
+
+```bash
+curl -X POST http://localhost:4000/embeddings \
+  -H "Authorization: Bearer sk-master-1234" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "text-embedding-004",
+    "input": ["This is a test document"]
   }'
 ```
 
 ### Python
+
+**Chat:**
 
 ```python
 from openai import OpenAI
@@ -126,19 +158,33 @@ client = OpenAI(
     base_url="http://localhost:4000"
 )
 
+# Uses gemini-2.5-flash (or falls back to gemini-2.5-flash-lite)
 response = client.chat.completions.create(
-    model="smart-shop-gpt-4o",
+    model="gemini-2.5-flash",
     messages=[{"role": "user", "content": "Explain AI"}]
 )
 print(response.choices[0].message.content)
 ```
 
+**Embeddings (for RAG):**
+
+```python
+embedding_response = client.embeddings.create(
+    model="text-embedding-004",
+    input="Document to embed"
+)
+vectors = embedding_response.data[0].embedding
+print(f"Embedding dimension: {len(vectors)}")
+```
+
 ## 🔧 Key Features
 
-- **Load Balancing**: Automatic load distribution across models
-- **Auto Fallback**: Switch models on failure
-- **Cost Tracking**: Monitor costs via Prometheus (http://localhost:9090)
-- **Unified API**: Single API key for all models
+- **Load Balancing**: Distributes requests between gemini-2.5-flash and gemini-2.5-flash-lite
+- **Auto Fallback**: If flash fails, automatically retries with flash-lite
+- **Embedding Support**: Dedicated endpoints for embeddings (/v1/embeddings)
+- **Multilingual**: Support for 100+ languages via text-multilingual-embedding-002
+- **Monitoring**: Real-time metrics via Prometheus (http://localhost:9090)
+- **Unified API**: Single master key for all models
 
 ## 🐛 Troubleshooting
 
@@ -159,15 +205,20 @@ curl http://localhost:4000/health
 - [GitHub](https://github.com/BerriAI/litellm)
 - [Supported Providers](https://docs.litellm.ai/docs/providers)
 
-## 📁 Repository layout
+## 📁 Repository Layout
 
-- `docker-compose.yml` — Primary docker-compose manifest for local and production deployments.
-- `config.yaml` — Gateway runtime configuration (contains backend definitions and routing rules). This file is ignored by `.gitignore` to avoid committing secrets.
-- `.env` — Local environment variables and secrets (DO NOT commit).
-- `prometheus.yml` — Prometheus scrape configuration for gateway metrics.
-- `mao/` — Workspace folder for local scripts, plugins, or experimental assets. This folder is intentionally empty by default; add a `README.md` inside `mao/` to document its purpose for your project.
-- `.gitignore` — Added to ignore local secrets, virtual environments, and runtime configs.
+- `docker-compose.yml` — Docker setup for LiteLLM proxy + Prometheus monitoring
+- `config.yaml` — Main configuration with Vertex AI models and routing rules ⭐
+- `config.example.yaml` — Template configuration (safe to commit)
+- `.env` — Environment variables & secrets (⚠️ DO NOT commit)
+- `prometheus.yml` — Prometheus metrics scraper configuration
+- `credential/` — Google Cloud service account JSON (⚠️ DO NOT commit)
+- `requirements.txt` — Python dependencies
+- `db_pg.py` — PostgreSQL database integration (optional)
+- `emb.py` — Embedding utility script
+- `main.py` — Main application entry point
 
 Notes:
+
 - Keep secrets out of the repository. Use `config.yaml.example` and `.env.example` for shareable samples.
 - Populate `mao/README.md` with any guidance for contributors using the `mao` workspace.
