@@ -5,6 +5,8 @@
 # This key is required when making requests to the proxy server
 general_settings:
   master_key: "sk-master-1234"
+  # store_model_in_db: true
+  # store_prompts_in_spend_logs: true
 
 # ========================================
 # LITELLM SETTINGS
@@ -15,10 +17,11 @@ litellm_settings:
   # Example: Google Gemini doesn't support the same parameters as OpenAI, so this ensures smooth fallback
   drop_params: True
   # Callbacks to execute when requests succeed (used here to send metrics to Prometheus)
+  # success_callbacks: ["prometheus", "langfuse"]
   success_callbacks: ["prometheus"]
   # Callbacks to execute when requests fail (used here to log failures to Prometheus)
+  # failure_callbacks: ["prometheus", "langfuse"]
   failure_callbacks: ["prometheus"]
-  
 # ========================================
 # ROUTER SETTINGS
 # ========================================
@@ -46,6 +49,14 @@ router_settings:
 # Defines which AI models are available and how to access them
 # Each entry maps a model name to its parameters and provider configuration
 model_list:
+  # ========================================
+  # Ollama
+  - model_name: gemma4:31b-cloud
+    litellm_params:
+      model: ollama/gemma4:31b-cloud
+      api_base: "https://ollama.com"
+      api_key: "8255c29d1f4255c29d1f4.....637ISkjUaOAX"
+      rpm: 100
   
   # ========================================
   # [A] LOAD BALANCING MODELS (Chat/Generation)
